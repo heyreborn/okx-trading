@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+**/secrets/
+**/*.secret
+config/*.local.toml
+*.log
+run/
+/target/
+/data/
+/backups/
