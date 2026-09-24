@@ -1,0 +1,85 @@
+name: okx-trading-dev
+
+services:
+  postgres:
+    image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+    environment:
+      POSTGRES_DB: okx_trading_dev
+      POSTGRES_USER: okx_dev
+      POSTGRES_PASSWORD: ${DEV_PG_PASSWORD:?set DEV_PG_PASSWORD}
+    ports:
+      - "127.0.0.1:${DEV_PG_PORT:-15432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U okx_dev -d okx_trading_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  kafka:
+    image: apache/kafka:4.0.2@sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f
+    hostname: kafka
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:19092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:${DEV_KAFKA_PORT:-19092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "127.0.0.1:${DEV_KAFKA_PORT:-19092}:19092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    networks: [backend]
+
+  object-store:
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
+    command: ["mini", "-dir=/data"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${DEV_S3_ACCESS_KEY:?set DEV_S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${DEV_S3_SECRET_KEY:?set DEV_S3_SECRET_KEY}
+      S3_BUCKET: okx-archive-dev
+    ports:
+      - "127.0.0.1:${DEV_S3_PORT:-18333}:8333"
+    volumes:
+      - object-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8333/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [backend]
+
+  kafka-init:
+    image: apache/kafka:4.0.2@sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f
+    profiles: [init]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
+    command: ["--bootstrap-server", "kafka:9092", "--create", "--if-not-exists", "--topic", "okx-market-dev", "--partitions", "3", "--replication-factor", "1"]
+    networks: [backend]
+    restart: "no"
+
+networks:
+  backend:
+    internal: false
+
+volumes:
+  postgres-data:
+  kafka-data:
+  object-data:

@@ -1,6 +1,6 @@
 # Docker Compose 部署约定
 
-状态：设计基线。本机验证环境的 PostgreSQL、Kafka、S3 兼容对象存储及其他独立服务一律运行在本机 Docker 容器中，由 Docker Compose 管理；不在宿主机原生安装数据库、Broker、对象存储或观测服务。宿主机需要 Docker Engine、Compose 插件及必要的网络/存储权限；Rust 构建和测试可优先使用本机 Mise 管理的工具链。当前仍处于文档阶段，`deploy/compose/` 尚无可启动的 Compose 文件；实现版本、配置、健康检查和恢复演练确定后再提交。
+状态：本机基础设施已实现，应用部署仍待实现。本机验证环境的 PostgreSQL、Kafka、S3 兼容对象存储及其他独立服务一律运行在本机 Docker 容器中，由 Docker Compose 管理；不在宿主机原生安装数据库、Broker、对象存储或观测服务。宿主机需要 Docker Engine、Compose 插件及必要的网络/存储权限；Rust 构建和测试优先直接使用本机工具链。`deploy/compose/compose.yaml` 已提供固定版本和摘要的 PostgreSQL、Kafka、SeaweedFS 单节点测试拓扑；尚无 Rust 应用服务。
 
 ## 本机验证拓扑
 
@@ -13,7 +13,7 @@
 | `ingest`、`archive-worker`、`observe`、`trader`、`notifier`、`admin` | Rust 应用进程 | 使用项目构建的镜像；按角色注入凭据；`trader` 默认只读/自动交易关闭，仅模拟盘。 |
 | 可选 `metrics`/日志收集/告警组件 | 本机排障与观测验证 | 使用 Compose profile 启用；不影响 PG 审计事实与交易恢复。 |
 
-首个本机 Compose 部署可用单节点 PG、Kafka 和对象存储验证功能、协议及重启恢复。单机容器和多副本应用不能证明宿主机故障、网络分区、PG 主库切换或 Kafka 跨故障域复制；这些仍在多机器隔离环境验收。Compose 文件由 `deploy/compose/compose.yaml` 定义服务、网络、卷、健康检查和可选 profile；基础镜像用明确版本/摘要固定，不用浮动 `latest`。发布镜像仍用可复现的多阶段容器构建；本机日常构建和测试优先直接使用本机 Rust 命令。
+首个本机 Compose 部署可用单节点 PG、Kafka 和对象存储验证功能、协议及重启恢复。单机容器和多副本应用不能证明宿主机故障、网络分区、PG 主库切换或 Kafka 跨故障域复制；这些仍在多机器隔离环境验收。Compose 文件由 `deploy/compose/compose.yaml` 定义服务、网络、卷、健康检查和初始化 profile；基础镜像用明确版本/摘要固定，不用浮动 `latest`。`deploy/docker/Dockerfile` 提供未来应用的多阶段构建模板，runner 尚未存在，故尚不能构建应用镜像；本机日常构建和测试优先直接使用本机 Rust 命令。
 
 ## Rust 构建与测试工具链
 
