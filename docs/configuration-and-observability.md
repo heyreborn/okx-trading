@@ -1,6 +1,6 @@
 # 配置、环境与观测规范
 
-状态：部署环境解析已实现，业务 TOML 与完整观测接线仍待实现。本文定义多机运行时配置和观测的责任边界。`crates/config::deployment` 已冻结首批环境变量和密钥文件引用；`config/env.example` 是非敏感模板，不是可运行的业务配置。架构归属见 [架构与功能归属](architecture.md)。
+状态：部署环境解析和观测基座已实现，业务 TOML 与进程接线仍待实现。本文定义多机运行时配置和观测的责任边界。`crates/config::deployment` 已冻结首批环境变量和密钥文件引用；`crates/telemetry` 已提供固定字段 JSON 日志、枚举化指标和进程健康类型。`config/env.example` 是非敏感模板，不是可运行的业务配置。架构归属见 [架构与功能归属](architecture.md)。
 
 ## 配置来源与优先级
 

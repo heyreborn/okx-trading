@@ -17,7 +17,7 @@
 - [x] **DEV-003 · 本机基础设施**｜`deploy/compose`、`deploy/docker`。以固定镜像版本/摘要定义 PostgreSQL、Kafka、S3 兼容对象存储、网络、卷、健康检查及一次性初始化入口；应用镜像采用可复现构建。完成：Compose 解析、空卷启动、停止重启后数据保留和错误凭据拒绝测试；不在宿主机安装服务端。验证：`docker compose config --quiet`、隔离项目 `up -d --wait`、Kafka 初始化、PG 行与 topic 重启保留、PG/S3 错误凭据拒绝。未验证：应用 runner 尚不存在，Dockerfile 尚不能构建应用镜像；多机故障恢复。
 - [x] **DEV-004 · 集成测试骨架**｜`integration-tests`。创建独立 package、脱敏且版本化的 `fixtures/`、隔离基础设施地址与测试启动约定；测试不得连接生产/模拟盘资源。完成：一项最小 PG/Kafka/对象存储连通性测试在隔离 Compose 下可重复运行。验证：`OKX_TEST_COMPOSE_PROJECT=okx-stage0-test-a1 cargo test -p integration-tests --test connectivity` 在隔离 Compose 项目中通过。未验证：后续 Rust 适配器尚未实现；多节点故障场景。
 - [x] **DEV-005 · 部署配置**｜`crates/config::deployment`、`config/env.example`。解析各进程地址、节点身份、密钥引用和环境接线；按角色最小权限校验，环境变量不得开启交易或覆盖业务预算。完成：缺失/冲突凭据、环境混用和敏感信息脱敏测试。验证：`cargo test --locked -p config` 通过，覆盖缺失凭据、角色越权、实盘环境、环境交易开关、URL 内嵌密码及错误脱敏。未验证：实际 runner 的密钥文件权限和多节点接线。
-- [ ] **DEV-006 · 观测基座**｜`crates/telemetry`。初始化结构化日志、低基数指标、进程健康和跨节点关联字段；日志不承担交易审计。完成：字段稳定、密钥脱敏、过高基数拒绝及日志不可用时业务事实仍可恢复的测试。
+- [x] **DEV-006 · 观测基座**｜`crates/telemetry`。初始化结构化日志、低基数指标、进程健康和跨节点关联字段；日志不承担交易审计。完成：字段稳定、密钥脱敏、过高基数拒绝及日志不可用时业务事实仍可恢复的测试。验证：`cargo test --locked -p telemetry` 通过，覆盖 JSON 字段、非法 ID、固定枚举标签、健康状态及失败日志 sink 不阻断调用方状态。未验证：PG 账本尚未实现，实际业务事实恢复、指标导出和跨节点传播待后续任务。
 
 ## 阶段 1：契约、配置与只读目录（验收 A）
 
