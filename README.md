@@ -10,4 +10,4 @@ The virtual workspace lists implemented packages explicitly. Planned packages an
 
 ## Build
 
-Use Rust 1.98.1 and run `cargo metadata --no-deps` and `cargo check --workspace --all-targets` from this directory. See [testing](docs/testing-strategy.md) and [deployment](docs/compose-deployment.md) for the later quality and infrastructure gates.
+Use Rust 1.98.1 and run `cargo metadata --no-deps` and `cargo check --workspace --all-targets` from this directory. The [CI workflow](.github/workflows/ci.yml) runs formatting, Clippy, Nextest, doctests, cargo-deny, and rustdoc against the locked dependency graph. See [testing](docs/testing-strategy.md) and [deployment](docs/compose-deployment.md) for the later quality and infrastructure gates.
