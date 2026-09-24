@@ -12,7 +12,7 @@
 
 ## 阶段 0：工程底座
 
-- [ ] **DEV-001 · 虚拟 workspace**｜根目录与首个 `crates/model` package。创建根 `Cargo.toml`、`Cargo.lock`、`rust-toolchain.toml`、`rustfmt.toml`、根 `README.md`；显式成员、2024 edition、resolver 3、共享 lint/依赖。完成：直接使用本机 Cargo 执行 `cargo metadata`、`cargo check --workspace --all-targets`；根无 `[package]`。
+- [x] **DEV-001 · 虚拟 workspace**｜根目录与首个 `crates/model` package。创建根 `Cargo.toml`、`Cargo.lock`、`rust-toolchain.toml`、`rustfmt.toml`、根 `README.md`；显式成员、2024 edition、resolver 3、共享 lint/依赖。完成：直接使用本机 Cargo 执行 `cargo metadata`、`cargo check --workspace --all-targets`；根无 `[package]`。验证：`cargo metadata --no-deps --format-version 1`、`cargo check --workspace --all-targets` 均通过。尚未验证：后续跨包依赖。
 - [ ] **DEV-002 · 工程质量与 CI**｜根目录、`.github/workflows/ci.yml`。设置 fmt、Clippy、Nextest、doctest、cargo-deny、rustdoc 门禁和依赖锁定；缺失工具的本机探测遵守[部署约定](compose-deployment.md#rust-构建与测试工具链)。完成：最小 workspace 在 CI 与本机通过，失败能阻断合并。
 - [ ] **DEV-003 · 本机基础设施**｜`deploy/compose`、`deploy/docker`。以固定镜像版本/摘要定义 PostgreSQL、Kafka、S3 兼容对象存储、网络、卷、健康检查及一次性初始化入口；应用镜像采用可复现构建。完成：Compose 解析、空卷启动、停止重启后数据保留和错误凭据拒绝测试；不在宿主机安装服务端。
 - [ ] **DEV-004 · 集成测试骨架**｜`integration-tests`。创建独立 package、脱敏且版本化的 `fixtures/`、隔离基础设施地址与测试启动约定；测试不得连接生产/模拟盘资源。完成：一项最小 PG/Kafka/对象存储连通性测试在隔离 Compose 下可重复运行。
