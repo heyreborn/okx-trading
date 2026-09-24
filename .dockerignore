@@ -1,0 +1,14 @@
+.git
+.codegraph
+.codex
+.agents
+target
+run
+data
+backups
+**/.env
+**/.env.*
+**/secrets
+**/*.secret
+**/*.local.toml
+**/*.log
