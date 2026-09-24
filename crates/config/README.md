@@ -1,6 +1,6 @@
 # config
 
-`deployment` parses process environment pairs into role-specific addresses and secret file references. It rejects unknown `OKX_TRADING_*` variables, non-demo environments, inline URL passwords, missing credentials, and credentials unrelated to the selected role. It performs no file or network I/O and cannot authorize trading. Runners will resolve and validate secret files later; this package never stores their contents. `src/lib.rs` exports the module.
+`deployment` parses process environment pairs into role-specific addresses and secret file references. PostgreSQL URLs require an explicit username but reject an inline password; the password comes from a secret file. It rejects unknown `OKX_TRADING_*` variables, non-demo environments, missing credentials, and credentials unrelated to the selected role. It performs no file or network I/O and cannot authorize trading. Runners will resolve and validate secret files later; this package never stores their contents. `src/lib.rs` exports the module.
 
 The parser is synchronous and stateless. Errors identify field names without values, and `SecretRef` redacts its debug representation. Node identity is bounded to 64 ASCII letters, digits, `-`, or `_`; secret paths must be absolute and cannot contain `..`. There is no retry, transaction, cancellation, or market fact here. Business TOML parsing, schema versioning, and policy bindings belong to DEV-010, so this package currently contains only deployment wiring.
 

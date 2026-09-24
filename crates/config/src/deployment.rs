@@ -112,12 +112,14 @@ fn endpoint(
     map: &BTreeMap<String, String>,
     key: &'static str,
     schemes: &[&str],
+    needs_username: bool,
 ) -> Result<Url, Error> {
     let url = Url::parse(&required(map, key)?).map_err(|_| Error::Invalid(key))?;
     if !schemes.contains(&url.scheme())
         || url.host_str().is_none()
         || url.password().is_some()
-        || !url.username().is_empty()
+        || (needs_username && url.username().is_empty())
+        || (!needs_username && !url.username().is_empty())
         || url.query().is_some()
         || url.fragment().is_some()
     {
@@ -178,7 +180,7 @@ pub fn from_pairs(
     {
         return Err(Error::Invalid("OKX_TRADING_CONFIG_PATH"));
     }
-    let database_url = endpoint(&map, "OKX_TRADING_DATABASE_URL", &["postgresql"])?;
+    let database_url = endpoint(&map, "OKX_TRADING_DATABASE_URL", &["postgresql"], true)?;
     let database_password = secret(&map, "OKX_TRADING_DATABASE_PASSWORD_FILE")?;
 
     let needs_kafka = matches!(
@@ -203,7 +205,12 @@ pub fn from_pairs(
     })?;
     let needs_store = matches!(role, Role::Archive | Role::Observe | Role::Admin);
     let object_store_url = permitted(&map, "OKX_TRADING_OBJECT_STORE_URL", needs_store, || {
-        endpoint(&map, "OKX_TRADING_OBJECT_STORE_URL", &["http", "https"])
+        endpoint(
+            &map,
+            "OKX_TRADING_OBJECT_STORE_URL",
+            &["http", "https"],
+            false,
+        )
     })?;
     let object_store_access_key = permitted(
         &map,
@@ -256,7 +263,10 @@ mod tests {
             ("OKX_TRADING_ENVIRONMENT", "demo"),
             ("OKX_TRADING_NODE_ID", "node-1"),
             ("OKX_TRADING_CONFIG_PATH", "/config/policy.toml"),
-            ("OKX_TRADING_DATABASE_URL", "postgresql://postgres:5432/okx"),
+            (
+                "OKX_TRADING_DATABASE_URL",
+                "postgresql://okx_dev@postgres:5432/okx",
+            ),
             ("OKX_TRADING_DATABASE_PASSWORD_FILE", "/run/secrets/pg"),
         ]
         .into_iter()
@@ -335,6 +345,13 @@ mod tests {
 
     #[test]
     fn rejects_inline_passwords_and_relative_secret_paths_without_leaking_values() {
+        let mut pairs = base();
+        pairs[3].1 = "postgresql://postgres:5432/okx".to_owned();
+        assert_eq!(
+            from_pairs(Role::Notifier, pairs).expect_err("database user must be explicit"),
+            Error::Invalid("OKX_TRADING_DATABASE_URL")
+        );
+
         let mut pairs = base();
         pairs[3].1 = "postgresql://user:private-value@postgres:5432/okx".to_owned();
         let error = from_pairs(Role::Notifier, pairs).expect_err("inline password must fail");
