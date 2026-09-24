@@ -10,14 +10,25 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-24.04
+    env:
+      OKX_TEST_COMPOSE_PROJECT: okx-stage0-test-ci
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.98.1 --profile minimal --component clippy,rustfmt
       - name: Install pinned quality tools
         run: |
           cargo +1.98.1 install --locked --version 0.9.146 cargo-nextest
           cargo +1.98.1 install --locked --version 0.20.2 cargo-deny
+      - name: Start isolated infrastructure
+        run: |
+          echo "DEV_PG_PASSWORD=$(openssl rand -hex 18)" >> "$GITHUB_ENV"
+          echo "DEV_S3_ACCESS_KEY=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+          echo "DEV_S3_SECRET_KEY=$(openssl rand -hex 20)" >> "$GITHUB_ENV"
+      - name: Start services and initialize Kafka
+        run: |
+          docker compose -f deploy/compose/compose.yaml -p "$OKX_TEST_COMPOSE_PROJECT" up -d --wait
+          docker compose -f deploy/compose/compose.yaml -p "$OKX_TEST_COMPOSE_PROJECT" --profile init run --rm kafka-init
       - name: Check workspace
         run: |
           cargo fmt --all -- --check
@@ -27,3 +38,6 @@ jobs:
           cargo test --locked --workspace --doc
           cargo deny check
           RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --no-deps
+      - name: Stop isolated infrastructure
+        if: always()
+        run: docker compose -f deploy/compose/compose.yaml -p "$OKX_TEST_COMPOSE_PROJECT" down -v
