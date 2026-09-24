@@ -5,6 +5,7 @@ Rust implementation of the simulated OKX trading system described in [the archit
 ## Current packages
 
 - [`crates/model`](crates/model/README.md): version marker for future cross-package contracts.
+- [`crates/config`](crates/config/README.md): role-aware deployment wiring.
 - [`integration-tests`](integration-tests/README.md): isolated Compose connectivity checks.
 
 The virtual workspace lists implemented packages explicitly. Planned packages and processes are described in [the roadmap](docs/development-roadmap.md); they do not exist yet.
