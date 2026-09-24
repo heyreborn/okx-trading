@@ -9,6 +9,7 @@
 ## 实现前阅读
 
 - `docs/architecture.md`：package 归属、依赖方向、数据链路及功能矩阵。
+- `docs/development-roadmap.md`：按依赖排序的 `DEV-xxx` 任务与阶段验收；实施前先核对实际完成证据。
 - `docs/contracts-and-invariants.md`、`docs/implementation-protocols.md`、`docs/failure-and-recovery.md`：身份、精度、事务与恢复规则。
 - `docs/technology-decisions.md`、`docs/performance-and-capacity.md`、`docs/configuration-and-observability.md`：技术栈、性能和运行约束。
 - `docs/testing-strategy.md`、`docs/module-documentation.md`：验收与逐模块文档要求。

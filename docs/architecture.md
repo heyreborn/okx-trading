@@ -2,7 +2,7 @@
 
 状态：设计草案。本文定义 Rust 实现的能力、模块职责和验收边界。Python 版本可作为已有功能和行为的参考，不要求兼容其源码、命令、配置或数据库。首个验证环境使用少量产品和策略；产品、策略实例及账户数量由配置和容量验收决定，不写死在业务代码中。
 
-配套文档：[技术决策](technology-decisions.md)、[性能与容量设计](performance-and-capacity.md)、[Docker Compose 部署约定](compose-deployment.md)、[配置与观测规范](configuration-and-observability.md)、[产品与策略身份及绑定](product-strategy-model.md)、[策略目标与实例执行协议](strategy-target-and-execution.md)、[契约与不变量](contracts-and-invariants.md)、[行情事件身份与采集接管](market-event-identity.md)、[实施协议](implementation-protocols.md)、[故障边界与恢复](failure-and-recovery.md)、[测试与验收策略](testing-strategy.md)、[模块文档规范](module-documentation.md)、[OKX 官方 API 依据](okx-api-reference.md)。
+配套文档：[开发任务总表](development-roadmap.md)、[技术决策](technology-decisions.md)、[性能与容量设计](performance-and-capacity.md)、[Docker Compose 部署约定](compose-deployment.md)、[配置与观测规范](configuration-and-observability.md)、[产品与策略身份及绑定](product-strategy-model.md)、[策略目标与实例执行协议](strategy-target-and-execution.md)、[契约与不变量](contracts-and-invariants.md)、[行情事件身份与采集接管](market-event-identity.md)、[实施协议](implementation-protocols.md)、[故障边界与恢复](failure-and-recovery.md)、[测试与验收策略](testing-strategy.md)、[模块文档规范](module-documentation.md)、[OKX 官方 API 依据](okx-api-reference.md)。
 
 ## Python 版本参考边界
 
