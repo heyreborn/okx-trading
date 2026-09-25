@@ -130,8 +130,9 @@ pub struct AccountEligibility {
     pub received_time_ms: ReceivedTimeMs,
 }
 
-/// Actual per-product fee fact. Negative maker fee is allowed for a rebate;
-/// downstream planners must use the applicable side/group, not a fixed rate.
+/// Actual per-product fee fact. Rates retain OKX's sign convention: positive
+/// means rebate and negative means commission. Planners must select the
+/// applicable side/group rather than assume one fixed rate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FeeSchedule {
     /// Exchange instrument ID this fee applies to.

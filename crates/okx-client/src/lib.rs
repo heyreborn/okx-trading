@@ -14,6 +14,7 @@ use reqwest::{Client as HttpClient, StatusCode, Url, redirect::Policy};
 use serde::Deserialize;
 use sha2::Sha256;
 use std::fmt;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use time::{OffsetDateTime, macros::format_description};
@@ -37,6 +38,7 @@ pub enum Error {
     ClockUnavailable,
     ClockSkew,
     InvalidCredentials,
+    CredentialFile,
     InvalidEndpoint,
 }
 
@@ -48,7 +50,7 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-/// Demo API credentials supplied by a runner after resolving secret refs.
+/// Demo API credentials owned by this adapter after secret file resolution.
 /// `Debug` and errors never expose their values.
 pub struct Credentials {
     key: String,
@@ -80,6 +82,55 @@ impl Credentials {
             passphrase,
         })
     }
+}
+
+/// Absolute paths to the three demo API secrets. Paths and values are hidden
+/// from debug output; only the OKX adapter reads their contents.
+pub struct CredentialFiles {
+    key: PathBuf,
+    secret: PathBuf,
+    passphrase: PathBuf,
+}
+
+impl fmt::Debug for CredentialFiles {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("CredentialFiles([redacted])")
+    }
+}
+
+impl CredentialFiles {
+    /// Accepts three absolute paths. No file is read until client creation.
+    pub fn new(key: PathBuf, secret: PathBuf, passphrase: PathBuf) -> Result<Self, Error> {
+        if [&key, &secret, &passphrase].iter().any(|path| {
+            !path.is_absolute()
+                || path
+                    .components()
+                    .any(|part| part == std::path::Component::ParentDir)
+        }) {
+            return Err(Error::CredentialFile);
+        }
+        Ok(Self {
+            key,
+            secret,
+            passphrase,
+        })
+    }
+}
+
+fn read_credential(path: &Path) -> Result<String, Error> {
+    let metadata = std::fs::symlink_metadata(path).map_err(|_| Error::CredentialFile)?;
+    if !metadata.file_type().is_file() || metadata.len() > 1024 {
+        return Err(Error::CredentialFile);
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o077 != 0 {
+            return Err(Error::CredentialFile);
+        }
+    }
+    let value = std::fs::read_to_string(path).map_err(|_| Error::CredentialFile)?;
+    Ok(value.trim_end_matches(['\r', '\n']).to_owned())
 }
 
 /// Supported demo REST regions. The deployment must select the region of its
@@ -312,6 +363,17 @@ impl ReadOnlyClient {
     /// ambient HTTP proxies are disabled; no request is sent at construction.
     pub fn new_demo(region: Region, credentials: Credentials) -> Result<Self, Error> {
         Self::build(region.base(), credentials)
+    }
+
+    /// Reads three protected files once, keeps credentials inside this client,
+    /// and constructs a demo-only GET adapter. Errors never include file data.
+    pub fn new_demo_from_files(region: Region, files: &CredentialFiles) -> Result<Self, Error> {
+        let credentials = Credentials::new(
+            read_credential(&files.key)?,
+            read_credential(&files.secret)?,
+            read_credential(&files.passphrase)?,
+        )?;
+        Self::new_demo(region, credentials)
     }
 
     fn build(base: &str, credentials: Credentials) -> Result<Self, Error> {
@@ -838,6 +900,39 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn mock_net_mode_is_parsed_as_actual_account_state() {
+        let mut server = mockito::Server::new_async().await;
+        let time = unix_ms().expect("local time").to_string();
+        let clock = server
+            .mock("GET", "/api/v5/public/time")
+            .with_status(200)
+            .with_body(format!(
+                "{{\"code\":\"0\",\"data\":[{{\"ts\":\"{time}\"}}]}}"
+            ))
+            .create_async()
+            .await;
+        let account = server
+            .mock("GET", "/api/v5/account/config")
+            .with_status(200)
+            .with_body("{\"code\":\"0\",\"data\":[{\"acctLv\":\"2\",\"posMode\":\"net_mode\"}]}")
+            .create_async()
+            .await;
+        let client = ReadOnlyClient::build(&server.url(), creds()).expect("client");
+        client.synchronize_clock().await.expect("clock");
+        assert_eq!(
+            client
+                .account_configuration()
+                .await
+                .expect("net account")
+                .value
+                .position_mode,
+            PositionMode::NetMode
+        );
+        clock.assert_async().await;
+        account.assert_async().await;
+    }
+
+    #[tokio::test]
     async fn mock_rejects_http_business_and_unknown_state() {
         let mut server = mockito::Server::new_async().await;
         let http_error = server
@@ -1059,5 +1154,49 @@ mod tests {
         });
         drop(clock);
         assert_eq!(client.timestamp(), Err(Error::ClockUnavailable));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn protected_credential_files_stay_inside_client() {
+        use std::os::unix::fs::{PermissionsExt, symlink};
+        let directory = std::env::temp_dir().join(format!(
+            "okx-client-credentials-{}-{}",
+            std::process::id(),
+            unix_ms().expect("time")
+        ));
+        std::fs::create_dir(&directory).expect("isolated test directory");
+        let paths: Vec<_> = ["key", "secret", "passphrase"]
+            .into_iter()
+            .map(|name| directory.join(name))
+            .collect();
+        for (path, value) in paths.iter().zip(["test-key", "test-secret", "test-pass"]) {
+            std::fs::write(path, value).expect("write dummy secret");
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
+                .expect("private file");
+        }
+        let files = CredentialFiles::new(paths[0].clone(), paths[1].clone(), paths[2].clone())
+            .expect("absolute paths");
+        let client = ReadOnlyClient::new_demo_from_files(Region::Global, &files)
+            .expect("private dummy files");
+        assert_eq!(client.credentials.key, "test-key");
+        assert_eq!(format!("{files:?}"), "CredentialFiles([redacted])");
+        std::fs::set_permissions(&paths[1], std::fs::Permissions::from_mode(0o644))
+            .expect("simulate exposed file");
+        assert!(matches!(
+            ReadOnlyClient::new_demo_from_files(Region::Global, &files),
+            Err(Error::CredentialFile)
+        ));
+        std::fs::set_permissions(&paths[1], std::fs::Permissions::from_mode(0o600))
+            .expect("restore private file");
+        let link = directory.join("link");
+        symlink(&paths[0], &link).expect("test symlink");
+        let linked = CredentialFiles::new(link, paths[1].clone(), paths[2].clone())
+            .expect("absolute link path");
+        assert!(matches!(
+            ReadOnlyClient::new_demo_from_files(Region::Global, &linked),
+            Err(Error::CredentialFile)
+        ));
+        std::fs::remove_dir_all(directory).expect("clean test files");
     }
 }

@@ -21,6 +21,7 @@ const KEYS: &[&str] = &[
     "OKX_TRADING_OKX_API_KEY_FILE",
     "OKX_TRADING_OKX_API_SECRET_FILE",
     "OKX_TRADING_OKX_API_PASSPHRASE_FILE",
+    "OKX_TRADING_OKX_REGION",
 ];
 
 /// Process role used to limit deployment capabilities before adapters start.
@@ -34,8 +35,15 @@ pub enum Role {
     Admin,
 }
 
+/// Demo API region selected by the account owner. Never implies live trading.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OkxRegion {
+    Global,
+    UnitedStates,
+}
+
 /// Absolute path to a deployment-provided secret. The path is hidden in debug
-/// output; reading and authorizing its contents belongs to the runner.
+/// output; the owning adapter reads its contents after runner assembly.
 #[derive(Clone, Eq, PartialEq)]
 pub struct SecretRef(PathBuf);
 
@@ -67,6 +75,7 @@ pub struct Deployment {
     pub okx_api_key: Option<SecretRef>,
     pub okx_api_secret: Option<SecretRef>,
     pub okx_api_passphrase: Option<SecretRef>,
+    pub okx_region: Option<OkxRegion>,
 }
 
 /// Parse failure. Only field names, never supplied values, appear in errors.
@@ -237,6 +246,16 @@ pub fn from_pairs(
         needs_okx,
         || secret(&map, "OKX_TRADING_OKX_API_PASSPHRASE_FILE"),
     )?;
+    let okx_region = permitted(
+        &map,
+        "OKX_TRADING_OKX_REGION",
+        needs_okx,
+        || match required(&map, "OKX_TRADING_OKX_REGION")?.as_str() {
+            "global" => Ok(OkxRegion::Global),
+            "us" => Ok(OkxRegion::UnitedStates),
+            _ => Err(Error::Invalid("OKX_TRADING_OKX_REGION")),
+        },
+    )?;
 
     Ok(Deployment {
         role,
@@ -251,6 +270,7 @@ pub fn from_pairs(
         okx_api_key,
         okx_api_secret,
         okx_api_passphrase,
+        okx_region,
     })
 }
 
@@ -311,8 +331,33 @@ mod tests {
             "OKX_TRADING_OKX_API_PASSPHRASE_FILE",
             "/run/secrets/passphrase",
         );
+        add(&mut pairs, "OKX_TRADING_OKX_REGION", "global");
         let parsed = from_pairs(Role::Trader, pairs).expect("valid trader wiring");
         assert!(!format!("{parsed:?}").contains("/run/secrets/secret"));
+        assert_eq!(parsed.okx_region, Some(OkxRegion::Global));
+
+        let mut pairs = base();
+        add(&mut pairs, "OKX_TRADING_KAFKA_BOOTSTRAP", "kafka:9092");
+        add(
+            &mut pairs,
+            "OKX_TRADING_OKX_API_KEY_FILE",
+            "/run/secrets/key",
+        );
+        add(
+            &mut pairs,
+            "OKX_TRADING_OKX_API_SECRET_FILE",
+            "/run/secrets/secret",
+        );
+        add(
+            &mut pairs,
+            "OKX_TRADING_OKX_API_PASSPHRASE_FILE",
+            "/run/secrets/passphrase",
+        );
+        add(&mut pairs, "OKX_TRADING_OKX_REGION", "live");
+        assert_eq!(
+            from_pairs(Role::Trader, pairs).expect_err("unknown region"),
+            Error::Invalid("OKX_TRADING_OKX_REGION")
+        );
     }
 
     #[test]
@@ -340,6 +385,14 @@ mod tests {
         assert_eq!(
             from_pairs(Role::Notifier, pairs).expect_err("extra credential must fail"),
             Error::Forbidden("OKX_TRADING_OKX_API_KEY_FILE")
+        );
+
+        let mut pairs = base();
+        add(&mut pairs, "OKX_TRADING_KAFKA_BOOTSTRAP", "kafka:9092");
+        add(&mut pairs, "OKX_TRADING_OKX_REGION", "global");
+        assert_eq!(
+            from_pairs(Role::Ingest, pairs).expect_err("region belongs to trader"),
+            Error::Forbidden("OKX_TRADING_OKX_REGION")
         );
     }
 

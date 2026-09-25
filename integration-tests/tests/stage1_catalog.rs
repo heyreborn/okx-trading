@@ -8,7 +8,9 @@ use instrument::{
 };
 use model::facts::{PositionMode, ProductKind};
 use model::units::{Decimal, ReceivedTimeMs, SourceTimeMs};
-use okx_client::{Credentials, InstrumentType, ReadOnlyClient, Region};
+use okx_client::{CredentialFiles, InstrumentType, ReadOnlyClient, Region};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 const SAMPLE: &str = include_str!("../../config/example.toml");
 
@@ -114,12 +116,87 @@ fn offline_multi_product_catalog_and_mode_contract() {
     ));
 }
 
-fn secret(variable: &str) -> String {
-    let path = std::env::var(variable).expect("explicit demo secret file variable is required");
-    std::fs::read_to_string(path)
-        .expect("read demo secret file")
-        .trim_end_matches(['\r', '\n'])
-        .to_owned()
+#[test]
+fn net_mode_variant_accepts_net_targets_and_rejects_wrong_swap_units() {
+    let mut value: toml::Value = toml::from_str(SAMPLE).expect("structured sample TOML");
+    value["strategies"][2]["targets"][0]["mode"] = toml::Value::String("swap_net".into());
+    let source = toml::to_string(&value).expect("valid net-mode variant");
+    let parsed = business::parse(&source).expect("strict net config");
+    let account = &parsed.file().accounts[0];
+    parsed
+        .validate_actual_mode(&account.account_id, PositionMode::NetMode)
+        .expect("net target works in net mode");
+    parsed
+        .validate_actual_mode(&account.account_id, PositionMode::LongShortMode)
+        .expect("net target also works in dual-side mode");
+
+    let swap = parsed
+        .file()
+        .products
+        .iter()
+        .find(|p| p.kind == ProductKind::LinearUsdtSwap)
+        .expect("swap product");
+    let mapping = ProductMapping {
+        product_id: swap.product_id.clone(),
+        okx_inst_id: swap.okx_inst_id.clone(),
+        kind: swap.kind,
+        base: swap.base.clone(),
+        quote: swap.quote.clone(),
+        settlement: swap.settlement.clone(),
+    };
+    let spec = InstrumentSpec {
+        okx_inst_id: swap.okx_inst_id.clone(),
+        kind: swap.kind,
+        base: swap.base.clone(),
+        quote: swap.quote.clone(),
+        settlement: swap.settlement.clone(),
+        version: "wrong-unit-v1".into(),
+        state: TradingState::Live,
+        tick_size: dec("0.1"),
+        lot_size: dec("1"),
+        min_size: dec("1"),
+        contract_value: Some(dec("0.01")),
+        contract_value_currency: Some(swap.quote.clone()),
+        fee_group_id: Some("1".into()),
+        source_time_ms: SourceTimeMs::new(100).expect("source time"),
+        received_time_ms: ReceivedTimeMs::new(100).expect("receipt time"),
+    };
+    assert!(matches!(
+        Directory::new(vec![mapping], vec![spec]),
+        Err(instrument::Error::UnsupportedKind)
+    ));
+}
+
+fn trader_wiring() -> (Region, CredentialFiles, PathBuf) {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.env.trader.local");
+    let entries =
+        dotenvy::from_path_iter(path).unwrap_or_else(|_| panic!("cannot read trader wiring"));
+    let mut values = BTreeMap::new();
+    for entry in entries {
+        let (name, value) = entry.unwrap_or_else(|_| panic!("cannot parse trader wiring"));
+        if name.starts_with("OKX_TRADING_") && values.insert(name, value).is_some() {
+            panic!("duplicate trader wiring field");
+        }
+    }
+    assert_eq!(
+        values.get("OKX_TRADING_ENVIRONMENT").map(String::as_str),
+        Some("demo")
+    );
+    let region = match values.get("OKX_TRADING_OKX_REGION").map(String::as_str) {
+        Some("global") => Region::Global,
+        Some("us") => Region::UnitedStates,
+        _ => panic!("unknown demo region"),
+    };
+    let field = |name| PathBuf::from(values.get(name).expect("missing trader wiring field"));
+    let files = CredentialFiles::new(
+        field("OKX_TRADING_OKX_API_KEY_FILE"),
+        field("OKX_TRADING_OKX_API_SECRET_FILE"),
+        field("OKX_TRADING_OKX_API_PASSPHRASE_FILE"),
+    )
+    .expect("absolute demo secret paths");
+    let config_path = field("OKX_TRADING_CONFIG_PATH");
+    assert!(config_path.is_absolute(), "absolute demo config path");
+    (region, files, config_path)
 }
 
 #[tokio::test]
@@ -129,19 +206,10 @@ async fn authorized_demo_catalog_acceptance() {
         std::env::var("OKX_STAGE1_DEMO_READ_ONLY").as_deref(),
         Ok("1")
     );
-    let region = match std::env::var("OKX_STAGE1_DEMO_REGION").as_deref() {
-        Ok("global") => Region::Global,
-        Ok("us") => Region::UnitedStates,
-        _ => panic!("explicit demo region is required"),
-    };
-    let credentials = Credentials::new(
-        secret("OKX_STAGE1_DEMO_KEY_FILE"),
-        secret("OKX_STAGE1_DEMO_SECRET_FILE"),
-        secret("OKX_STAGE1_DEMO_PASSPHRASE_FILE"),
-    )
-    .expect("valid demo credential references");
-    let client = ReadOnlyClient::new_demo(region, credentials).expect("demo-only client");
-    let parsed = business::parse(SAMPLE).expect("versioned sample config");
+    let (region, files, config_path) = trader_wiring();
+    let client = ReadOnlyClient::new_demo_from_files(region, &files).expect("demo-only client");
+    let config = std::fs::read_to_string(config_path).expect("read reviewed demo config");
+    let parsed = business::parse(&config).expect("versioned demo config");
     let file = parsed.file();
     let account = &file.accounts[0];
     client.synchronize_clock().await.expect("demo system time");
@@ -235,4 +303,12 @@ async fn authorized_demo_catalog_acceptance() {
             .assess(&product.product_id, &permit, &eligibility, fee, now, 30_000)
             .expect("fresh account-authorized read-only product");
     }
+    println!(
+        "stage1 demo read-only acceptance: acctLv={}, posMode={:?}, products={}, strategies={}, config_sha256={}",
+        actual.value.account_level,
+        actual.value.position_mode,
+        file.products.len(),
+        file.strategies.len(),
+        parsed.digest()
+    );
 }

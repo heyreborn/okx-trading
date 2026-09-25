@@ -14,3 +14,7 @@ config = { version = "=0.1.0", path = "../crates/config" }
 instrument = { version = "=0.1.0", path = "../crates/instrument" }
 okx-client = { version = "=0.1.0", path = "../crates/okx-client" }
 tokio.workspace = true
+
+[dev-dependencies]
+dotenvy = "=0.15.7"
+toml.workspace = true
