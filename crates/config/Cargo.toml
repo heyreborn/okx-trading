@@ -7,6 +7,11 @@ license.workspace = true
 
 [dependencies]
 url.workspace = true
+model = { path = "../model" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+sha2.workspace = true
 
 [lints]
 workspace = true
