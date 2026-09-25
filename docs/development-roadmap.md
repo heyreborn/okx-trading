@@ -1,6 +1,6 @@
 # Rust 功能开发任务总表
 
-状态：持续更新。阶段 0 已完成；阶段 1 的 DEV-007 至 DEV-012 已完成，DEV-013 的真实模拟盘验收 A 尚未通过。顺序表示推荐交付路径；同阶段内无依赖的任务可调整，但不得越过阶段验收门禁。目标目录和依赖方向以 [架构文档](architecture.md)为准，技术选择以[技术决策](technology-decisions.md)为准。本表不授权自动交易或实盘交易。
+状态：持续更新。阶段 0 已完成；阶段 1 的 DEV-007 至 DEV-013 和所列样例的只读验收 A 已完成。顺序表示推荐交付路径；同阶段内无依赖的任务可调整，但不得越过阶段验收门禁。目标目录和依赖方向以 [架构文档](architecture.md)为准，技术选择以[技术决策](technology-decisions.md)为准。本表不授权自动交易或实盘交易。
 
 ## 使用规则
 
@@ -24,10 +24,10 @@
 - [x] **DEV-007 · 身份类型**｜`crates/model::identity`。定义账户、内部产品、OKX 产品、策略类型/实例、feed、事件、目标、决策和订单身份；禁止不同 ID 静默互换。完成：构造、序列化、重复/非法 ID 与版本兼容测试。提交：`9ab035d`。验证：`cargo test --offline -p model`、`cargo clippy --offline -p model --all-targets -- -D warnings`；身份字段 JSON 往返及非法/重复 ID 通过。未验证：数据库唯一约束与跨版本事实迁移，随 DEV-009 和持久化任务完成。
 - [x] **DEV-008 · 数值与时间类型**｜`crates/model::units`。实现 Money、Price、现货数量、合约张数、比例及来源/接收时间；精确十进制限制在 `NUMERIC(38,18)` 范围。提交：`990d81e`。验证：模型单元测试及[隔离 PG 往返记录](stage1-acceptance.md)。未验证：实际 OKX 规格的最大值是否均在该范围内。
 - [x] **DEV-009 · 最小事实契约**｜`crates/model::facts`。定义 schema 1 的事件、目标、账户、订单和成交最小字段，严格区分缺失、零、过期与未知。提交：`d813f22`、`3370e27`。验证：模型严格编解码、单位与版本拒绝测试。尚无历史 Rust 版本可迁移；未知版本拒绝，后续新增版本须显式迁移。参见[契约](contracts-and-invariants.md)。
-- [x] **DEV-010 · 业务配置与绑定**｜`crates/config`、`config/example.toml`。严格解析产品、静态策略能力、账户许可、政策及默认关闭门禁；校验实际账户模式。提交：`7b88a9d`、`79a5a4f`。验证：7 项配置测试及[跨包样例](stage1-acceptance.md)，覆盖多实例、跨产品输入、冲突模式与 SHA-256 版本摘要。未验证：真实账户模式。
-- [x] **DEV-011 · 产品规则**｜`crates/instrument`。校验内部/OKX 产品映射、规格、模式/许可、费率组及来源与接收时效。提交：`b54d80d`。验证：纯规则测试及[跨包样例](stage1-acceptance.md)。未验证：真实 OKX 产品规格与账户许可。
-- [x] **DEV-012 · OKX 只读 REST 基础**｜`crates/okx-client`。仅暴露模拟盘 GET 目录接口，处理签名、时钟、限速、响应大小、业务码及有类型字段。提交：`2328577`、`dc467cc`。验证：7 项假 HTTP 协议测试及[官方 API 核对](okx-api-reference.md)。未验证：远端真实响应及地区差异；当前接口无分页请求。
-- [ ] **DEV-013 · 契约与目录验收 A**｜`integration-tests`。离线跨包样例、错误样本和隔离 PG 数值测试已通过，提交：`c6fefef`；真实只读模拟盘测试默认忽略。完成仍需达到[测试矩阵 A](testing-strategy.md#功能验收矩阵)；阻塞项和运行方式见[阶段 1 验收记录](stage1-acceptance.md)。系统仍只读。
+- [x] **DEV-010 · 业务配置与绑定**｜`crates/config`、`config/example.toml`。严格解析产品、静态策略能力、账户许可、政策及默认关闭门禁；校验实际账户模式。提交：`7b88a9d`、`79a5a4f`、`b730667`。验证：7 项配置测试、跨包样例及[Global 模拟盘现场核对](stage1-acceptance.md)，覆盖多实例、跨产品输入、冲突模式与 SHA-256 版本摘要。真实净仓账户待验证。
+- [x] **DEV-011 · 产品规则**｜`crates/instrument`。校验内部/OKX 产品映射、规格、模式/许可、费率组及来源与接收时效。提交：`b54d80d`。验证：纯规则测试及[两类真实模拟盘产品目录](stage1-acceptance.md)。其他产品规格和地区待核对。
+- [x] **DEV-012 · OKX 只读 REST 基础**｜`crates/okx-client`。仅暴露模拟盘 GET 目录接口，处理签名、时钟、限速、响应大小、业务码及有类型字段；私有持有受保护文件加载的凭据。提交：`2328577`、`dc467cc`、`b730667`。验证：9 项假 HTTP/密钥文件测试、[官方 API 核对](okx-api-reference.md)及 Global 模拟盘现场读取。US 地区和远端异常响应待验证；当前接口无分页请求。
+- [x] **DEV-013 · 契约与目录验收 A**｜`integration-tests`。离线多产品/多实例、两种账户模式、错误单位和过期事实测试、隔离 PG 数值测试及 Global 模拟盘只读目录验收通过。提交：`c6fefef`、`b730667`。范围和未覆盖场景见[阶段 1 验收记录](stage1-acceptance.md)及[测试矩阵 A](testing-strategy.md#功能验收矩阵)。系统仍只读。
 
 ## 阶段 2：采集、归档、策略与目标（验收 B）
 

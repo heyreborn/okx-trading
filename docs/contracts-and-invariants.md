@@ -1,6 +1,6 @@
 # 契约与不变量
 
-状态：阶段 1 契约正在实现。`model::identity`、`model::units` 与 `model::facts` 已定义首版 Rust ID、精确小数和 schema 1 最小事实信封；数据库列与 OKX 远端样本仍待验收。交易所响应是外部输入，必须先解析和校验，再进入领域类型。模块归属见 [架构与功能归属](architecture.md)。
+状态：阶段 1 契约与样例只读目录验收已通过。`model::identity`、`model::units` 与 `model::facts` 已定义首版 Rust ID、精确小数和 schema 1 最小事实信封；`NUMERIC(38,18)` 在隔离 PostgreSQL 完成往返测试，一个 Global 模拟账户的 SPOT/SWAP 目录完成只读核对。其他地区、产品极值及真实净仓账户仍未现场覆盖。交易所响应是外部输入，必须先解析和校验，再进入领域类型。模块归属见 [架构与功能归属](architecture.md)。
 
 ## 身份、版本与时间
 

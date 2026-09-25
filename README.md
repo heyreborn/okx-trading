@@ -9,7 +9,9 @@ Rust implementation of the simulated OKX trading system described in [the archit
 - [`crates/instrument`](crates/instrument/README.md): pure read-only product and account directory validation.
 - [`crates/okx-client`](crates/okx-client/README.md): GET-only OKX demo REST adapter and typed directory responses.
 - [`crates/telemetry`](crates/telemetry/README.md): bounded process diagnostics.
-- [`integration-tests`](integration-tests/README.md): isolated Compose connectivity checks.
+- [`integration-tests`](integration-tests/README.md): isolated Compose and stage-one read-only catalog acceptance checks.
+
+Stage-one contract and read-only directory acceptance passed for one Global demo account; scope and remaining regional/account-mode gaps are recorded in the [acceptance report](docs/stage1-acceptance.md). No runnable trading process or order path exists yet.
 
 The virtual workspace lists implemented packages explicitly. Planned packages and processes are described in [the roadmap](docs/development-roadmap.md); they do not exist yet.
 
