@@ -45,9 +45,13 @@ jobs:
           printf '%s\n' "$tools_dir" >> "$GITHUB_PATH"
       - name: Start isolated infrastructure
         run: |
-          echo "DEV_PG_PASSWORD=$(openssl rand -hex 18)" >> "$GITHUB_ENV"
-          echo "DEV_S3_ACCESS_KEY=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
-          echo "DEV_S3_SECRET_KEY=$(openssl rand -hex 20)" >> "$GITHUB_ENV"
+          pg_password="$(openssl rand -hex 18)"
+          s3_access_key="$(openssl rand -hex 12)"
+          s3_secret_key="$(openssl rand -hex 20)"
+          printf '::add-mask::%s\n' "$pg_password" "$s3_access_key" "$s3_secret_key"
+          printf 'DEV_PG_PASSWORD=%s\n' "$pg_password" >> "$GITHUB_ENV"
+          printf 'DEV_S3_ACCESS_KEY=%s\n' "$s3_access_key" >> "$GITHUB_ENV"
+          printf 'DEV_S3_SECRET_KEY=%s\n' "$s3_secret_key" >> "$GITHUB_ENV"
       - name: Start services and initialize Kafka
         run: |
           docker compose -f deploy/compose/compose.yaml -p "$OKX_TEST_COMPOSE_PROJECT" up -d --wait
