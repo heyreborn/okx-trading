@@ -7,3 +7,10 @@ license.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+serde.workspace = true
+bigdecimal.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

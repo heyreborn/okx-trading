@@ -1,0 +1,92 @@
+schema_version = 1
+version = "demo-config-1"
+environment = "demo"
+combination = "reject_conflicts"
+
+[trading]
+enabled = false
+
+[risk]
+version = "policy-1"
+max_order_fraction = "0.01"
+max_account_gross_fraction = "0.30"
+max_daily_loss_fraction = "0.02"
+
+[[products]]
+product_id = "spot-btc"
+okx_inst_id = "BTC-USDT"
+kind = "spot"
+base = "BTC"
+quote = "USDT"
+
+[[products]]
+product_id = "swap-btc"
+okx_inst_id = "BTC-USDT-SWAP"
+kind = "linear_usdt_swap"
+base = "BTC"
+quote = "USDT"
+settlement = "USDT"
+
+[[accounts]]
+account_id = "demo-main"
+allowed_position_modes = ["net_mode", "long_short_mode"]
+product_ids = ["spot-btc", "swap-btc"]
+
+[[strategies]]
+strategy_instance_id = "spot-candle"
+kind = "candle_momentum"
+account_id = "demo-main"
+parameter_version = "v1"
+binding_version = "v1"
+budget_fraction = "0.02"
+
+[[strategies.inputs]]
+binding_id = "spot-candle-input"
+product_id = "spot-btc"
+feed = "candle1m"
+
+[[strategies.targets]]
+binding_id = "spot-candle-target"
+product_id = "spot-btc"
+mode = "spot"
+
+[[strategies]]
+strategy_instance_id = "spot-flow"
+kind = "trade_flow"
+account_id = "demo-main"
+parameter_version = "v1"
+binding_version = "v1"
+budget_fraction = "0.02"
+
+[[strategies.inputs]]
+binding_id = "spot-flow-input"
+product_id = "spot-btc"
+feed = "trades_all"
+
+[[strategies.targets]]
+binding_id = "spot-flow-target"
+product_id = "spot-btc"
+mode = "spot"
+
+[[strategies]]
+strategy_instance_id = "swap-cross"
+kind = "candle_momentum"
+account_id = "demo-main"
+parameter_version = "v1"
+binding_version = "v1"
+budget_fraction = "0.02"
+
+[[strategies.inputs]]
+binding_id = "swap-cross-input-spot"
+product_id = "spot-btc"
+feed = "candle1m"
+
+[[strategies.inputs]]
+binding_id = "swap-cross-input-swap"
+product_id = "swap-btc"
+feed = "candle1m"
+
+[[strategies.targets]]
+binding_id = "swap-cross-target"
+product_id = "swap-btc"
+mode = "swap_legs"

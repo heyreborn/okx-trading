@@ -2,7 +2,7 @@
 
 ## 仓库现状
 
-本仓库规划用 Rust 重新实现 `../okx-trading-py` 的功能。当前已有虚拟 Cargo workspace、`model`、`config`、`telemetry` 和 `integration-tests` package，以及可运行的本机基础设施 Compose；尚无可部署的 Rust 应用或交易能力。`docs/architecture.md` 中的目录是目标结构；声称某个 package、命令、服务、测试或交易能力已存在前，先检查实际文件。
+本仓库规划用 Rust 重新实现 `../okx-trading-py` 的功能。当前已有虚拟 Cargo workspace、`model`、`config`、`telemetry`、`instrument`、`okx-client` 和 `integration-tests` package，以及可运行的本机基础设施 Compose；尚无可部署的 Rust 应用或交易能力。`docs/architecture.md` 中的目录是目标结构；声称某个 package、命令、服务、测试或交易能力已存在前，先检查实际文件。
 
 初版面向 OKX 模拟盘，支持多个 SPOT 与 USDT 本位线性 SWAP 产品、每产品多个策略实例，并按多机运行设计。自动交易须通过文档规定的准入验收后才可启用；初版不得引入实盘交易入口。
 
