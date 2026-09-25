@@ -1,6 +1,7 @@
 //! Stable cross-package contract primitives. Identity values are validated at
 //! construction and deserialization boundaries. See the [package README](../README.md).
 
+pub mod facts;
 pub mod identity;
 pub mod units;
 
