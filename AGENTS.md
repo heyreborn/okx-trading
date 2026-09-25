@@ -13,7 +13,7 @@
 - `docs/contracts-and-invariants.md`、`docs/implementation-protocols.md`、`docs/failure-and-recovery.md`：身份、精度、事务与恢复规则。
 - `docs/technology-decisions.md`、`docs/performance-and-capacity.md`、`docs/configuration-and-observability.md`：技术栈、性能和运行约束。
 - `docs/testing-strategy.md`、`docs/module-documentation.md`：验收与逐模块文档要求。
-- `docs/git-workflow.md`：小功能提交粒度、提交信息和提交前检查。
+- `docs/git-workflow.md`、`docs/gh-cli-workflow.md`：小功能提交粒度、GitHub CLI、受保护分支与 PR/CI 流程。
 - `docs/okx-api-reference.md`：OKX 官方 API 链接及逐功能核对清单。
 
 ## CodeGraph
@@ -40,4 +40,4 @@
 
 ## Git 提交
 
-遵循 `docs/git-workflow.md`。每个完成并验证的小功能单独 commit，提交包含该功能必需的 Rust 代码、测试和模块文档；使用 `<type>(<scope>): <描述>` 的约定式提交信息。提交前核对暂存内容与敏感信息，提交后报告 commit ID 和验证结果。不得把未通过验收的交易能力描述为已可用。
+遵循 `docs/git-workflow.md` 和 `docs/gh-cli-workflow.md`。每个完成并验证的小功能单独 commit，提交包含该功能必需的 Rust 代码、测试和模块文档；使用 `<type>(<scope>): <描述>` 的约定式提交信息。提交前核对暂存内容与敏感信息，通过功能分支和 PR 等待必需的 `quality` 检查，再合并到受保护的 `main`。交付时报告 PR、commit ID 和验证结果；不得把未通过验收的交易能力描述为已可用。

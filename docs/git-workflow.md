@@ -1,6 +1,6 @@
 # Git 与提交规范
 
-状态：仓库工作约定。`main` 为主分支；每个完成并通过相应验证的小功能都单独提交。首次提交保存当前文档与工具配置基线，不表示规划中的 Rust package 已实现。
+状态：仓库工作约定。`main` 为受保护主分支；每个完成并通过相应验证的小功能都单独提交，并通过 PR 合并。GitHub CLI 的具体命令见 [GitHub CLI 工作流](gh-cli-workflow.md)。
 
 ## 提交粒度
 
@@ -37,4 +37,6 @@ chore(repo): initialize Rust trading design repository
 
 1. 选一个有明确所有者和验收条件的小功能；实施时同步更新代码、测试、package README、module rustdoc 与受影响的专题文档。
 2. 运行该功能所需检查，查看工作树和暂存差异，确认没有凭据、无关文件或生成数据。
-3. 使用符合上述格式的提交信息创建提交；提交后确认 `git status --short`，并在交付说明中报告提交 ID、验证结果及剩余限制。
+3. 在功能分支使用符合上述格式的提交信息创建提交，推送后用 `gh pr create` 向 `main` 发起 PR。
+4. 用 `gh pr checks --watch` 等待必需的 `quality` 检查；失败时查看运行日志、修复并重新推送。检查通过且 PR 可合并后用 `gh pr merge --squash --delete-branch` 合并，不绕过分支保护。
+5. 同步本地 `main`，在交付说明中报告 PR、合并提交、验证结果及剩余限制。完整命令和门禁核对见 [GitHub CLI 工作流](gh-cli-workflow.md)。

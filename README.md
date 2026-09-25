@@ -14,3 +14,5 @@ The virtual workspace lists implemented packages explicitly. Planned packages an
 ## Build
 
 Use Rust 1.98.1 and run `cargo metadata --no-deps` and `cargo check --workspace --all-targets` from this directory. The [CI workflow](.github/workflows/ci.yml) runs formatting, Clippy, Nextest, doctests, cargo-deny, and rustdoc against the locked dependency graph. See [testing](docs/testing-strategy.md) and [deployment](docs/compose-deployment.md) for the later quality and infrastructure gates.
+
+Changes to protected `main` go through a pull request and the required `quality` check. See the [GitHub CLI workflow](docs/gh-cli-workflow.md) for branch, PR, CI, and merge commands.
