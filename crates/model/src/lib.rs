@@ -2,6 +2,7 @@
 //! construction and deserialization boundaries. See the [package README](../README.md).
 
 pub mod identity;
+pub mod units;
 
 /// Initial version of the shared model contract. This is a schema marker, not
 /// evidence that any trading fact schema has been implemented.
