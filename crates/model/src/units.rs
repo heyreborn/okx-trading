@@ -196,6 +196,16 @@ impl Price {
     pub fn amount(&self) -> &Decimal {
         &self.amount
     }
+
+    /// Returns the base denomination.
+    pub fn base(&self) -> &Currency {
+        &self.base
+    }
+
+    /// Returns the quote denomination.
+    pub fn quote(&self) -> &Currency {
+        &self.quote
+    }
 }
 
 impl<'de> Deserialize<'de> for Price {

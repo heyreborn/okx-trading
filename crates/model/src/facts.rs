@@ -209,6 +209,25 @@ pub enum PositionQuantity {
     Swap(Contracts),
 }
 
+impl PositionQuantity {
+    /// Returns the exact amount in this variant's SPOT base units or SWAP
+    /// contracts. The caller must inspect the variant before arithmetic.
+    pub fn amount(&self) -> &Decimal {
+        match self {
+            Self::Spot(q) => q.amount(),
+            Self::Swap(q) => q.amount(),
+        }
+    }
+
+    /// Returns the product bound to this typed quantity.
+    pub fn product_id(&self) -> &ProductId {
+        match self {
+            Self::Spot(q) => q.product_id(),
+            Self::Swap(q) => q.product_id(),
+        }
+    }
+}
+
 /// Account snapshot fields needed across package boundaries. It does not
 /// claim that a private stream or source is currently trustworthy.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -263,7 +282,7 @@ pub struct OrderSnapshot {
     /// Exchange-observed status.
     pub status: OrderStatus,
     /// Cumulative executed quantity in product units.
-    pub filled_quantity: Decimal,
+    pub filled_quantity: PositionQuantity,
     /// Exchange source UTC Unix milliseconds.
     pub source_time_ms: SourceTimeMs,
 }
@@ -282,7 +301,7 @@ pub struct FillSnapshot {
     /// Exchange fill identity.
     pub fill_id: FillId,
     /// Positive executed quantity in product units.
-    pub quantity: Decimal,
+    pub quantity: PositionQuantity,
     /// Execution price with explicit base/quote denomination.
     pub price: Price,
     /// Actual fee; sign and currency are retained.
@@ -384,6 +403,14 @@ fn validate(fact: &Fact) -> Result<(), FactError> {
             if target.input_event_ids.iter().any(|id| !ids.insert(id)) {
                 return Err(FactError::DuplicateInput);
             }
+            if target.input_event_ids.is_empty()
+                && !matches!(
+                    target.value,
+                    TargetValue::NoSignal | TargetValue::Unavailable
+                )
+            {
+                return Err(FactError::InvalidBinding);
+            }
             match &target.value {
                 TargetValue::Spot(q) if q.product_id() != &target.product_id => {
                     return Err(FactError::InvalidBinding);
@@ -446,15 +473,17 @@ fn validate(fact: &Fact) -> Result<(), FactError> {
             }
         }
         Fact::OrderSnapshot(order) => {
-            if order.filled_quantity.is_negative()
+            if order.filled_quantity.product_id() != &order.product_id
                 || (order.status == OrderStatus::Filled
-                    && order.filled_quantity.to_numeric_text() == "0")
+                    && order.filled_quantity.amount().to_numeric_text() == "0")
             {
                 return Err(FactError::InvalidOrder);
             }
         }
         Fact::FillSnapshot(fill) => {
-            if fill.quantity.is_negative() || fill.quantity.to_numeric_text() == "0" {
+            if fill.quantity.product_id() != &fill.product_id
+                || fill.quantity.amount().to_numeric_text() == "0"
+            {
                 return Err(FactError::InvalidAmount);
             }
         }
@@ -585,5 +614,67 @@ mod tests {
             FactEnvelope::new(Fact::AccountSnapshot(account)),
             Err(FactError::InvalidPosition)
         );
+    }
+
+    #[test]
+    fn order_and_fill_keep_product_bound_quantity_units() {
+        let zero = Decimal::parse("0").expect("zero");
+        let one = Decimal::parse("1").expect("one");
+        let spot_id = id("spot-a");
+        let mut order = OrderSnapshot {
+            account_id: id("account-1"),
+            product_id: spot_id,
+            client_order_id: id("client-1"),
+            exchange_order_id: Some(id("exchange-1")),
+            status: OrderStatus::Filled,
+            filled_quantity: PositionQuantity::Spot(
+                BaseQuantity::new(zero.clone(), id("spot-a")).expect("zero spot"),
+            ),
+            source_time_ms: SourceTimeMs::new(100).expect("time"),
+        };
+        assert_eq!(
+            FactEnvelope::new(Fact::OrderSnapshot(order.clone())),
+            Err(FactError::InvalidOrder)
+        );
+        order.filled_quantity =
+            PositionQuantity::Swap(Contracts::new(one.clone(), id("swap-a")).expect("swap amount"));
+        assert_eq!(
+            FactEnvelope::new(Fact::OrderSnapshot(order.clone())),
+            Err(FactError::InvalidOrder)
+        );
+        order.filled_quantity = PositionQuantity::Spot(
+            BaseQuantity::new(one.clone(), id("spot-a")).expect("spot amount"),
+        );
+        let valid = FactEnvelope::new(Fact::OrderSnapshot(order)).expect("valid order");
+        let mut wire = serde_json::to_value(valid).expect("order JSON");
+        wire["fact"]["data"]["filled_quantity"] = serde_json::json!("1");
+        assert!(serde_json::from_value::<FactEnvelope>(wire).is_err());
+
+        let base = Currency::new("BTC").expect("base");
+        let quote = Currency::new("USDT").expect("quote");
+        let mut fill = FillSnapshot {
+            account_id: id("account-1"),
+            product_id: id("spot-a"),
+            client_order_id: id("client-1"),
+            fill_id: id("fill-1"),
+            quantity: PositionQuantity::Spot(
+                BaseQuantity::new(zero, id("spot-a")).expect("zero spot"),
+            ),
+            price: Price::new(one, base, quote.clone()).expect("price"),
+            fee: Money {
+                amount: Decimal::parse("-0.01").expect("fee"),
+                currency: quote,
+            },
+            source_time_ms: SourceTimeMs::new(100).expect("time"),
+        };
+        assert_eq!(
+            FactEnvelope::new(Fact::FillSnapshot(fill.clone())),
+            Err(FactError::InvalidAmount)
+        );
+        fill.quantity = PositionQuantity::Spot(
+            BaseQuantity::new(Decimal::parse("0.5").expect("half"), id("spot-a"))
+                .expect("quantity"),
+        );
+        FactEnvelope::new(Fact::FillSnapshot(fill)).expect("valid fill");
     }
 }
