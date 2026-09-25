@@ -24,6 +24,7 @@ pub enum Error {
     UnlicensedProduct,
     InvalidBinding,
     UnsupportedCapability,
+    ActualModeMismatch,
     InvalidPolicy,
     Digest,
 }
@@ -228,6 +229,40 @@ impl BusinessConfig {
     pub fn verify_digest(&self, expected: &str) -> Result<(), Error> {
         (self.digest == expected).then_some(()).ok_or(Error::Digest)
     }
+
+    /// Checks an observed account mode against local policy and all bound
+    /// target modes. This does not alter the remote account or authorize trade.
+    pub fn validate_actual_mode(
+        &self,
+        account_id: &AccountId,
+        actual: PositionMode,
+    ) -> Result<(), Error> {
+        let account = self
+            .file
+            .accounts
+            .iter()
+            .find(|a| &a.account_id == account_id)
+            .ok_or(Error::UnknownAccount)?;
+        if !account.allowed_position_modes.contains(&actual) {
+            return Err(Error::ActualModeMismatch);
+        }
+        for strategy in self
+            .file
+            .strategies
+            .iter()
+            .filter(|s| &s.account_id == account_id)
+        {
+            if strategy
+                .targets
+                .iter()
+                .any(|target| target.mode == TargetMode::SwapLegs)
+                && actual != PositionMode::LongShortMode
+            {
+                return Err(Error::ActualModeMismatch);
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Parses and validates TOML without file, environment or network I/O.
@@ -379,6 +414,16 @@ mod tests {
         assert!(!first.file().trading.enabled);
         assert!(first.verify_digest(second.digest()).is_ok());
         assert_eq!(first.verify_digest("wrong"), Err(Error::Digest));
+        let account_id = &first.file().accounts[0].account_id;
+        assert!(
+            first
+                .validate_actual_mode(account_id, PositionMode::LongShortMode)
+                .is_ok()
+        );
+        assert_eq!(
+            first.validate_actual_mode(account_id, PositionMode::NetMode),
+            Err(Error::ActualModeMismatch)
+        );
     }
 
     #[test]
