@@ -1,6 +1,6 @@
 # GitHub CLI 工作流
 
-本仓库的 `origin` 为 `heyreborn/okx-trading`，默认分支 `main` 受保护。日常变更从功能分支发起 PR；`Rust quality` 工作流的 `quality` 检查通过且分支与 `main` 保持同步后才能合并。提交粒度和信息格式见 [Git 与提交规范](git-workflow.md)。
+本仓库的 `origin` 为 `heyreborn/okx-trading`，默认分支 `main` 受保护。日常变更从功能分支发起 PR；`Rust quality` 工作流的 `quality` 检查通过且分支与 `main` 保持同步后才能合并。仓库只允许 squash merge；提交粒度、信息格式与 SHA 变化见 [Git 与提交规范](git-workflow.md#合并策略)。
 
 ## 开始前
 
@@ -60,8 +60,9 @@ git pull --ff-only origin main
 ```sh
 gh run list --workflow 'Rust quality' --limit 5
 gh api repos/heyreborn/okx-trading/branches/main/protection --jq '{checks:.required_status_checks.checks,strict:.required_status_checks.strict,enforce_admins:.enforce_admins.enabled,requires_pr:(.required_pull_request_reviews != null)}'
+gh api repos/heyreborn/okx-trading --jq '{allow_merge_commit,allow_rebase_merge,allow_squash_merge}'
 ```
 
-当前规则要求 PR、最新分支上的 `quality` 检查，并对管理员生效；禁止强推和删除。不要求额外审阅者。调整门禁后读回规则，并用检查失败的测试 PR 验证合并确实被阻止，再记录验收证据。`gh api` 修改的是远端仓库配置，应先确认目标仓库和变更范围。
+当前规则要求 PR、最新分支上的 `quality` 检查，并对管理员生效；禁止强推和删除。不要求额外审阅者。仓库的三个合并选项中仅 `allow_squash_merge` 为 `true`。调整门禁后读回规则，并用检查失败的测试 PR 验证合并确实被阻止，再记录验收证据。`gh api` 修改的是远端仓库配置，应先确认目标仓库和变更范围。
 
 命令参数以 [GitHub CLI 手册](https://cli.github.com/manual/)和 [GitHub 分支保护文档](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)为准。
