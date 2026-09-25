@@ -2,7 +2,7 @@
 
 ## 仓库现状
 
-本仓库规划用 Rust 重新实现 `../okx-trading-py` 的功能。目前只有设计文档及配置、部署说明，尚无可运行的 Cargo workspace。`docs/architecture.md` 中的目录是目标结构；声称某个 package、命令、Compose 服务、测试或交易能力已存在前，先检查实际文件。
+本仓库规划用 Rust 重新实现 `../okx-trading-py` 的功能。当前已有虚拟 Cargo workspace、`model`、`config`、`telemetry` 和 `integration-tests` package，以及可运行的本机基础设施 Compose；尚无可部署的 Rust 应用或交易能力。`docs/architecture.md` 中的目录是目标结构；声称某个 package、命令、服务、测试或交易能力已存在前，先检查实际文件。
 
 初版面向 OKX 模拟盘，支持多个 SPOT 与 USDT 本位线性 SWAP 产品、每产品多个策略实例，并按多机运行设计。自动交易须通过文档规定的准入验收后才可启用；初版不得引入实盘交易入口。
 
@@ -20,7 +20,7 @@
 
 仓库已通过 `codegraph init .` 初始化 `.codegraph/`，项目级 Codex MCP 配置在 `.codex/config.toml`。在可信项目中重启 Codex 后优先使用 `codegraph_explore`；没有 MCP 工具时运行 `codegraph explore "问题或符号"`。定位或理解 Rust 代码时先查询 CodeGraph，再按需读取文件或使用 `rg`。索引落后时运行 `codegraph sync .`，需要全量重建时运行 `codegraph index .`，并用 `codegraph status .` 核对文件和节点数。
 
-当前仓库尚无 Rust 源码，初始索引为 0 个文件；CodeGraph 不代替阅读 `docs/` 中的规划文档。新增 Rust package 后同步索引，再用实际符号查询验证调用关系。`.codegraph/` 的数据库是本机生成文件，不提交到版本库；仅保留其中的 `.gitignore`。
+当前仓库已有 Rust 源码；CodeGraph 不代替阅读 `docs/` 中的规划文档。新增 Rust package 后同步索引，再用实际符号查询验证调用关系。`.codegraph/` 的数据库是本机生成文件，不提交到版本库；仅保留其中的 `.gitignore`。
 
 ## 来源与实现规则
 
