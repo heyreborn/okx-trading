@@ -2,7 +2,9 @@ name: Rust quality
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -18,8 +20,29 @@ jobs:
         run: rustup toolchain install 1.98.1 --profile minimal --component clippy,rustfmt
       - name: Install pinned quality tools
         run: |
-          cargo +1.98.1 install --locked --version 0.9.146 cargo-nextest
-          cargo +1.98.1 install --locked --version 0.20.2 cargo-deny
+          set -euo pipefail
+          tools_dir="$RUNNER_TEMP/quality-tools"
+          mkdir -p "$tools_dir"
+
+          nextest_archive="$RUNNER_TEMP/cargo-nextest-0.9.146-x86_64-unknown-linux-gnu.tar.gz"
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "$nextest_archive" \
+            https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.146/cargo-nextest-0.9.146-x86_64-unknown-linux-gnu.tar.gz
+          printf '%s  %s\n' '682c21b777c333e96fd532e114d3a5a894e0729ab88d94c0a9f20f8419695428' "$nextest_archive" | sha256sum --check -
+          tar --no-same-owner -xzf "$nextest_archive" -C "$tools_dir" cargo-nextest
+
+          deny_archive="$RUNNER_TEMP/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "$deny_archive" \
+            https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz
+          printf '%s  %s\n' '9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f' "$deny_archive" | sha256sum --check -
+          tar --no-same-owner -xzf "$deny_archive" -C "$tools_dir" --strip-components=1 \
+            cargo-deny-0.20.2-x86_64-unknown-linux-musl/cargo-deny
+
+          chmod 755 "$tools_dir/cargo-nextest" "$tools_dir/cargo-deny"
+          "$tools_dir/cargo-nextest" --version
+          "$tools_dir/cargo-deny" --version
+          printf '%s\n' "$tools_dir" >> "$GITHUB_PATH"
       - name: Start isolated infrastructure
         run: |
           echo "DEV_PG_PASSWORD=$(openssl rand -hex 18)" >> "$GITHUB_ENV"
