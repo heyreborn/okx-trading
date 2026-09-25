@@ -4,6 +4,10 @@
 
 表中的“功能参考”指本项目的职责文档：[架构功能矩阵](architecture.md#功能归属与验收矩阵)、[产品与策略身份及绑定](product-strategy-model.md)、[契约与不变量](contracts-and-invariants.md)、[故障恢复](failure-and-recovery.md)、[测试策略](testing-strategy.md)。策略信号、组合、风险政策、Kafka、PostgreSQL 和 Parquet 属于本系统，没有对应的 OKX 业务 API；它们只能使用表中列出的 OKX 事实作为输入。
 
+### DEV-011 只读目录核对（2026-09-25）
+
+已重新核对[公共产品目录](https://www.okx.com/docs-v5/en/#public-data-rest-api-get-instruments)、[账户产品目录](https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-instruments)与[变更日志](https://www.okx.com/docs-v5/log_en/)。公共规格中的 `tickSz` 是价格步长；`lotSz` 与 `minSz` 在 SPOT 为基础币数量、在衍生品为合约张数；SWAP 还要核对 `ctType=linear`、`ctVal`、`ctValCcy` 与结算币种。`state=post_only` 不能当作普通 `live`；变更日志新增的价格带字段不能代替实时限价接口。账户目录需要 Read 权限，文档给出的限速为每用户和产品类别 2 秒 20 次。`crates/instrument` 只校验已解析事实；地区域名、HTTP 错误码、分页及模拟盘响应样本在 DEV-012 适配器和 DEV-013 现场验收中继续核对。当前没有账户凭据，因此尚未确认实际账户模式或账户产品许可。
+
 ## 接入与连接
 
 | 系统功能 | 官方 API / 章节 | 功能参考与实现前核对 |

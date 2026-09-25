@@ -234,6 +234,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "instrument"
+version = "0.1.0"
+dependencies = [
+ "model",
+]
+
+[[package]]
 name = "integration-tests"
 version = "0.1.0"
 
