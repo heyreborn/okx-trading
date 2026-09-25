@@ -10,6 +10,14 @@
 - 不提交密钥、`.env`、本机 CodeGraph 数据库、构建产物、运行数据或真实账户响应。`.codegraph/.gitignore` 和 `.codex/config.toml` 属于可提交的工具配置。首次加入外部数据或样本前先脱敏并核对授权。
 - 不修改已有共享提交历史。需要撤销已共享变更时使用新的修复或 `revert` 提交；只有明确要求且确认未共享时才整理本地历史。
 
+## 合并策略
+
+`main` 只允许通过 PR 执行 squash merge。每个 PR 在主分支上形成一个提交，不产生 merge commit；功能分支上的中间修正仍保留在 PR 记录中。一个 PR 应对应一个逻辑变更，PR 标题和最终 squash 提交遵循本页的提交信息格式。合并前必须通过受保护分支要求的 `quality` 检查，不使用管理员绕过。
+
+GitHub 会把新生成的 squash 提交 fast-forward 到 `main`，但这个提交的 SHA 不等于功能分支原提交的 SHA。`gh pr merge --rebase` 也保持线性历史，却会为原提交生成新的 SHA；GitHub PR 没有保留原 SHA 的真正 fast-forward 合并选项。本仓库选择每个 PR 一个主分支提交，因此只启用 squash。合并后的引用应使用 `main` 上的新 SHA，而非功能分支 SHA。
+
+[GitHub CLI 工作流](gh-cli-workflow.md)中的 `git pull --ff-only origin main` 只用于让本地 `main` 前进到已合并的远端提交，不决定 GitHub 如何合并 PR。合并选项和保护规则的查询命令见该指南的[仓库门禁](gh-cli-workflow.md#仓库门禁)；[GitHub 合并方式说明](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github)解释了各方式的提交行为。
+
 ## 提交信息
 
 遵循 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/zh-hans/v1.0.0/)：
