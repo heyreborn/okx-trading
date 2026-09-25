@@ -1,6 +1,7 @@
-//! Shared model contract primitives. This module currently exposes only the
-//! initial schema version marker; identity, units, and facts follow in DEV-007
-//! through DEV-009. See the [package README](../README.md).
+//! Stable cross-package contract primitives. Identity values are validated at
+//! construction and deserialization boundaries. See the [package README](../README.md).
+
+pub mod identity;
 
 /// Initial version of the shared model contract. This is a schema marker, not
 /// evidence that any trading fact schema has been implemented.
