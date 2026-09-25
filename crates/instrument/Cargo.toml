@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-model = { path = "../model" }
+model = { version = "=0.1.0", path = "../model" }
 
 [lints]
 workspace = true

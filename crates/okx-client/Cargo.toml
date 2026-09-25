@@ -6,8 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-model = { path = "../model" }
-instrument = { path = "../instrument" }
+model = { version = "=0.1.0", path = "../model" }
+instrument = { version = "=0.1.0", path = "../instrument" }
 reqwest.workspace = true
 tokio.workspace = true
 hmac.workspace = true

@@ -20,7 +20,7 @@ reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-
 tokio = { version = "=1.47.1", features = ["sync", "time", "macros", "rt-multi-thread"] }
 hmac = "=0.12.1"
 base64 = "=0.22.1"
-time = { version = "=0.3.44", features = ["formatting", "macros"] }
+time = { version = "=0.3.47", features = ["formatting", "macros"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
