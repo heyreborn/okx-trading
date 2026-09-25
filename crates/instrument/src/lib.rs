@@ -95,6 +95,8 @@ pub struct InstrumentSpec {
     pub contract_value: Option<Decimal>,
     /// Currency of `contract_value`, absent for SPOT.
     pub contract_value_currency: Option<Currency>,
+    /// Exchange fee group ID, required to bind current rates.
+    pub fee_group_id: Option<String>,
     /// Exchange source UTC Unix milliseconds.
     pub source_time_ms: SourceTimeMs,
     /// Local receipt UTC Unix milliseconds.
@@ -134,6 +136,8 @@ pub struct AccountEligibility {
 pub struct FeeSchedule {
     /// Exchange instrument ID this fee applies to.
     pub okx_inst_id: OkxInstrumentId,
+    /// Fee group selected from the matching specification.
+    pub group_id: String,
     /// Version of the normalized fee fact.
     pub version: String,
     /// Signed maker fee fraction.
@@ -249,7 +253,10 @@ impl Directory {
                 Error::StaleEligibility
             }
         })?;
-        if fee.okx_inst_id != mapping.okx_inst_id || fee.version.is_empty() {
+        if fee.okx_inst_id != mapping.okx_inst_id
+            || fee.version.is_empty()
+            || spec.fee_group_id.as_deref() != Some(fee.group_id.as_str())
+        {
             return Err(Error::InvalidFee);
         }
         fresh(now_ms, fee.source_time_ms, fee.received_time_ms, max_age_ms).map_err(|e| {
@@ -377,6 +384,7 @@ mod tests {
             min_size: dec("0.001"),
             contract_value: None,
             contract_value_currency: None,
+            fee_group_id: Some("1".into()),
             source_time_ms,
             received_time_ms,
         };
@@ -427,6 +435,7 @@ mod tests {
         };
         let mut fee = FeeSchedule {
             okx_inst_id: mapping.okx_inst_id,
+            group_id: "1".into(),
             version: "v1".into(),
             maker: dec("-0.0001"),
             taker: dec("0.001"),
@@ -439,6 +448,12 @@ mod tests {
                 .assess(&mapping.product_id, &permit, &eligibility, &fee, now, 10)
                 .is_ok()
         );
+        fee.group_id = "other".into();
+        assert!(matches!(
+            directory.assess(&mapping.product_id, &permit, &eligibility, &fee, now, 10),
+            Err(Error::InvalidFee)
+        ));
+        fee.group_id = "1".into();
         assert!(matches!(
             directory.assess(&mapping.product_id, &permit, &eligibility, &fee, now, 9),
             Err(Error::StaleSpecification)

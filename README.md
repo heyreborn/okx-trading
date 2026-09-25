@@ -7,6 +7,7 @@ Rust implementation of the simulated OKX trading system described in [the archit
 - [`crates/model`](crates/model/README.md): typed identities, exact units and minimal versioned facts.
 - [`crates/config`](crates/config/README.md): role-aware deployment wiring.
 - [`crates/instrument`](crates/instrument/README.md): pure read-only product and account directory validation.
+- [`crates/okx-client`](crates/okx-client/README.md): GET-only OKX demo REST adapter and typed directory responses.
 - [`crates/telemetry`](crates/telemetry/README.md): bounded process diagnostics.
 - [`integration-tests`](integration-tests/README.md): isolated Compose connectivity checks.
 
