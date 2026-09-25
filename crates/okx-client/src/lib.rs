@@ -236,6 +236,18 @@ impl Observation<Vec<PublicInstrument>> {
     }
 }
 
+impl Observation<PublicInstrument> {
+    /// Converts one allowlisted product response into a versioned spec.
+    pub fn to_instrument_spec(&self) -> Result<InstrumentSpec, Error> {
+        let batch = Observation {
+            value: vec![self.value.clone()],
+            source_time_ms: self.source_time_ms,
+            received_time_ms: self.received_time_ms,
+        };
+        one(batch.to_instrument_specs()?)
+    }
+}
+
 impl Observation<AccountInstruments> {
     /// Combines two observations from the same authenticated client. The older
     /// source time governs freshness; later receipt time governs age checks.
@@ -365,6 +377,27 @@ impl ReadOnlyClient {
         self.observation(values)
     }
 
+    /// Reads one allowlisted public instrument by `instId`, avoiding a large
+    /// full-directory response. The returned ID must exactly match the query.
+    pub async fn public_instrument(
+        &self,
+        inst_type: InstrumentType,
+        inst_id: &OkxInstrumentId,
+    ) -> Result<Observation<PublicInstrument>, Error> {
+        self.require_clock()?;
+        let path = format!(
+            "/api/v5/public/instruments?instType={}&instId={}",
+            inst_type.as_okx(),
+            inst_id.as_str()
+        );
+        let rows: Vec<InstrumentRow> = self.get_rows(&path, false).await?;
+        let row = one(rows)?.parse(inst_type)?;
+        if &row.inst_id != inst_id {
+            return Err(Error::InvalidResponse);
+        }
+        self.observation(row)
+    }
+
     /// Reads actual account level and position mode. Requires demo credentials
     /// with Read permission and a recent successful clock check.
     pub async fn account_configuration(&self) -> Result<Observation<AccountConfiguration>, Error> {
@@ -461,7 +494,7 @@ impl ReadOnlyClient {
             taker,
             updated_time_ms: fee_source,
         })?;
-        if fee_source > observed.source_time_ms {
+        if fee_source.get() - observed.source_time_ms.get() > CLOCK_MAX_SKEW_MS {
             return Err(Error::InvalidResponse);
         }
         Ok(observed)
@@ -849,10 +882,18 @@ mod tests {
             .create_async()
             .await;
         let public = server.mock("GET", "/api/v5/public/instruments")
-            .match_query(mockito::Matcher::UrlEncoded("instType".into(), "SPOT".into()))
+            .match_query(mockito::Matcher::Exact("instType=SPOT".into()))
             .match_header("x-simulated-trading", "1")
             .with_status(200)
             .with_body(r#"{"code":"0","data":[{"instId":"BTC-USDT","instType":"SPOT","state":"live","baseCcy":"BTC","quoteCcy":"USDT","tickSz":"0.1","lotSz":"0.0001","minSz":"0.001","groupId":"1"},{"instId":"ETH-USDT","instType":"SPOT","state":"post_only","baseCcy":"ETH","quoteCcy":"USDT","tickSz":"0.01","lotSz":"0.001","minSz":"0.01","groupId":"1"}]}"#)
+            .create_async().await;
+        let targeted = server.mock("GET", "/api/v5/public/instruments")
+            .match_query(mockito::Matcher::AllOf(vec![
+                mockito::Matcher::UrlEncoded("instType".into(), "SPOT".into()),
+                mockito::Matcher::UrlEncoded("instId".into(), "BTC-USDT".into()),
+            ]))
+            .with_status(200)
+            .with_body(r#"{"code":"0","data":[{"instId":"BTC-USDT","instType":"SPOT","state":"live","baseCcy":"BTC","quoteCcy":"USDT","tickSz":"0.1","lotSz":"0.0001","minSz":"0.001","groupId":"1"}]}"#)
             .create_async().await;
         let account = server.mock("GET", "/api/v5/account/instruments")
             .match_query(mockito::Matcher::UrlEncoded("instType".into(), "SPOT".into()))
@@ -879,6 +920,17 @@ mod tests {
         );
         assert_eq!(specs.value[1].state, InstrumentState::PostOnly);
         assert!(specs.source_time_ms.get() <= specs.received_time_ms.get());
+        let single = client
+            .public_instrument(
+                InstrumentType::Spot,
+                &OkxInstrumentId::new("BTC-USDT").expect("ID"),
+            )
+            .await
+            .expect("allowlisted instrument");
+        assert_eq!(
+            single.to_instrument_spec().expect("spec").base.as_str(),
+            "BTC"
+        );
         let visible = client
             .account_instruments(
                 AccountId::new("demo-a").expect("account ID"),
@@ -938,6 +990,7 @@ mod tests {
         );
         clock.assert_async().await;
         public.assert_async().await;
+        targeted.assert_async().await;
         account.assert_async().await;
         fee.assert_async().await;
     }
